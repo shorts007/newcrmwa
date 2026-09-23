@@ -10,7 +10,6 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
-  ExternalLink,
   Zap,
   QrCode,
   RotateCw,
@@ -27,7 +26,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { SettingsPanelHead } from './settings-panel-head';
 import {
@@ -36,13 +34,10 @@ import {
   AccordionTrigger,
   AccordionContent,
 } from '@/components/ui/accordion';
-import type { EvolutionConfig as EvolutionConfigType } from '@/types/evolution';
-
-const MASKED_KEY = '••••••••••••••••••••••••';
 
 export function EvolutionConfig() {
   const t = useTranslations('Settings.evolution');
-  const { user, canEditSettings } = useAuth();
+  const { canEditSettings } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -63,11 +58,9 @@ export function EvolutionConfig() {
   const [readMessages, setReadMessages] = useState(false);
 
   // State info
-  const [config, setConfig] = useState<EvolutionConfigType | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<
     'connected' | 'connecting' | 'qrcode_ready' | 'disconnected' | 'error' | 'unknown'
   >('unknown');
-  const [statusMessage, setStatusMessage] = useState('');
   const [phoneInfo, setPhoneInfo] = useState<{
     phone?: string | null;
     profileName?: string | null;
@@ -81,7 +74,6 @@ export function EvolutionConfig() {
     pairingCode?: string;
   } | null>(null);
   const [loadingQr, setLoadingQr] = useState(false);
-  const [qrCountdown, setQrCountdown] = useState(25);
 
   // Computed Webhook URL
   const [webhookUrl, setWebhookUrl] = useState('');
@@ -105,7 +97,6 @@ export function EvolutionConfig() {
       const data = await res.json();
       if (data.configured && data.config) {
         const c = data.config;
-        setConfig(c);
         setServerUrl(c.server_url || '');
         setApiKey(c.api_key || '');
         setInstanceName(c.instance_name || 'wacrm-main');
@@ -120,9 +111,6 @@ export function EvolutionConfig() {
           profileName: c.profile_name,
           profilePictureUrl: c.profile_pic_url,
         });
-        if (c.status === 'connected') {
-          setStatusMessage('Evolution API instance is active and connected.');
-        }
       } else {
         setConnectionStatus('disconnected');
       }
@@ -836,8 +824,8 @@ export function EvolutionConfig() {
       </Card>
 
       {/* Setup Guide & Docker-Compose Accordion */}
-      <Accordion type="single" collapsible className="w-full">
-        <AccordionItem value="guide" className="border rounded-lg bg-card px-4">
+      <Accordion className="w-full">
+        <AccordionItem className="border rounded-lg bg-card px-4">
           <AccordionTrigger className="text-sm font-semibold hover:no-underline py-3">
             <div className="flex items-center gap-2">
               <HelpCircle className="size-4 text-primary" />

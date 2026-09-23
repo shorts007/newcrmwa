@@ -178,7 +178,7 @@ export async function POST(request: Request) {
               effectiveApiKey,
               effectiveInstanceName,
             );
-            return NextResponse.json({ ok: true, ...retryConnect });
+            return NextResponse.json({ ...retryConnect });
           }
         }
         return NextResponse.json({ error: connectRes.error }, { status: 400 });

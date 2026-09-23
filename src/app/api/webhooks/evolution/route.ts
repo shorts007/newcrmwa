@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { findExistingContact } from '@/lib/contacts/dedupe';
-import { normalizePhone } from '@/lib/whatsapp/phone-utils';
 import { reopenClosedConversation } from '@/lib/conversations/reopen';
 import { runAutomationsForTrigger } from '@/lib/automations/engine';
 import { dispatchInboundToFlows } from '@/lib/flows/engine';
@@ -150,14 +149,10 @@ export async function POST(request: Request) {
       }
 
       const wamid = key.id || `evo_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-      const normalized = normalizePhone(phone);
 
       // Find or create Contact
       let contactId: string | null = null;
-      const existing = await findExistingContact(admin, accountId, {
-        phone,
-        phoneNormalized: normalized,
-      });
+      const existing = await findExistingContact(admin, accountId, phone);
 
       if (existing) {
         contactId = existing.id;
@@ -218,7 +213,7 @@ export async function POST(request: Request) {
       } else {
         // Reopen if closed and incoming
         if (!fromMe && conv.status === 'closed') {
-          await reopenClosedConversation(admin, conversationId, accountId);
+          await reopenClosedConversation(admin, conv);
         }
 
         await admin
@@ -261,12 +256,13 @@ export async function POST(request: Request) {
         if (!fromMe && insertedMsg) {
           try {
             await runAutomationsForTrigger({
-              triggerType: 'message_received',
               accountId,
+              triggerType: 'new_message_received',
               contactId,
-              conversationId,
-              messageId: insertedMsg.id,
-              messageText: text,
+              context: {
+                message_text: text || '',
+                conversation_id: conversationId,
+              },
             });
           } catch (e) {
             console.error('[Evolution Webhook] Automation error:', e);
@@ -275,31 +271,39 @@ export async function POST(request: Request) {
           try {
             await dispatchInboundToFlows({
               accountId,
+              userId: fallbackUserId || '',
               contactId,
               conversationId,
-              messageId: insertedMsg.id,
-              text,
+              message: {
+                kind: 'text',
+                text: text || '',
+                meta_message_id: wamid,
+              },
             });
           } catch (e) {
             console.error('[Evolution Webhook] Flows error:', e);
           }
 
           try {
-            await dispatchInboundToAiReply({
-              accountId,
-              contactId,
-              conversationId,
-              incomingMessage: text,
-            });
+            if (text?.trim()) {
+              await dispatchInboundToAiReply({
+                accountId,
+                conversationId,
+                contactId,
+                configOwnerUserId: fallbackUserId || '',
+                inboundMessageId: wamid,
+              });
+            }
           } catch (e) {
             console.error('[Evolution Webhook] AI reply error:', e);
           }
 
           try {
-            await dispatchWebhookEvent(accountId, 'message.received', {
-              message_id: insertedMsg.id,
+            await dispatchWebhookEvent(admin, accountId, 'message.received', {
               conversation_id: conversationId,
               contact_id: contactId,
+              whatsapp_message_id: wamid,
+              content_type: contentType,
               text,
               phone,
             });

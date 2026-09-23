@@ -116,7 +116,7 @@ export default function DashboardPage() {
       .then((a) => setActivity(a))
       .catch((err) => {
         console.warn('[dashboard] activity query fallback to demo:', err)
-        setActivity(DEMO_ACTIVITY as unknown as ActivityItem[])
+        setActivity(DEMO_ACTIVITY)
       })
       .finally(() => setActivityLoading(false))
   }, [])
